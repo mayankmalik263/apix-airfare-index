@@ -1,0 +1,30 @@
+# One service. FastAPI already serves the dashboard, the open data feed and the
+# keyed API from the same process, so splitting the frontend onto a second host
+# would add a CORS surface and a second deploy for no gain.
+#
+# No persistent disk, deliberately. The build step rebuilds the whole database
+# from the raw archive in data/seed, so the SQLite file is baked into the image
+# and a restart cannot lose anything that was not already in git. That also
+# means the free plan is enough.
+services:
+  - type: web
+    name: apix
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements-web.txt && python -m scripts.bootstrap
+    startCommand: python -m uvicorn webapp.backend.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /v1/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: APIX_SCHEDULER
+        value: "off"          # read-only instance: it never collects
+      - key: PYTHONIOENCODING
+        value: "utf-8"
+      - key: TZ
+        # The observation slot in config/basket.yml is declared in IST, so the
+        # server's idea of "today" has to be IST too. On a UTC host the date
+        # rolls over at 05:30 IST, which puts the 20:00 collection slot and the
+        # compliance verdict it depends on on opposite sides of midnight.
+        value: "Asia/Kolkata"

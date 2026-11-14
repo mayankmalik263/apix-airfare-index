@@ -1,0 +1,11 @@
+observation_date,route_code,window_days,departure_date,checker,time_checked,website,airline,flight_no,fare_shown,status,notes
+2026-09-06,BOM-BLR,1,2026-09-07,checker2,,,,,,,
+2026-09-06,BOM-BLR,7,2026-09-13,checker2,,,,,,,
+2026-09-06,BOM-BLR,14,2026-09-20,checker2,,,,,,,
+2026-09-06,BOM-BLR,21,2026-09-27,checker2,,,,,,,
+2026-09-06,BOM-BLR,45,2026-10-21,checker2,,,,,,,
+2026-09-06,DEL-CCU,1,2026-09-07,checker2,,,,,,,
+2026-09-06,DEL-CCU,7,2026-09-13,checker2,,,,,,,
+2026-09-06,DEL-CCU,14,2026-09-20,checker2,,,,,,,
+2026-09-06,DEL-CCU,21,2026-09-27,checker2,,,,,,,
+2026-09-06,DEL-CCU,45,2026-10-21,checker2,,,,,,,

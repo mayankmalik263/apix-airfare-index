@@ -1,0 +1,597 @@
+/* APIx — instrument panel.
+   Print-Tech Paper, dark. A technical document that happens to be a website:
+   sheet numbers, ruler ticks, hairlines, mono marginalia, one accent.
+
+   Two constraints drove every value here.
+   1. It gets read on a projector from three metres, so nothing is smaller
+      than 11px, contrast is measured against the real surface, and the ground
+      is near-black so a washed-out beam still separates the layers.
+   2. Type is sized in rem, so a reader who has scaled their text up gets a
+      page that scales with them instead of a page that ignores them. */
+
+/* ------------------------------------------------------------------ tokens */
+:root {
+  /* ground — deepened for projector contrast */
+  --ink:        #03060C;
+  --ink-2:      #070B14;
+  --surface:    #0C111C;
+  --surface-2:  #121927;
+  --edge:       #26314A;
+  --edge-soft:  #18202F;
+
+  /* text — raised one step; --text-3 was failing contrast on --surface */
+  --text:       #F3F6FB;
+  --text-2:     #AEBACE;
+  --text-3:     #7C88A0;
+
+  --beam:       #6DD3FF;   /* measured */
+  --beam-dim:   #2E7FA6;
+  --amber:      #FFB35C;   /* generated history */
+  --slate:      #8794AC;   /* the official series */
+  --alert:      #FF6B6B;
+  --clear:      #4BE3A5;
+
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --face: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* type scale, rem so it honours the reader's text size.
+     Tracking is size-specific: display tightens, mono marginalia opens up. */
+  --t-micro:  0.6875rem;   /* 11px — the floor, mono labels */
+  --t-small:  0.8125rem;   /* 13px */
+  --t-body:   0.9375rem;   /* 15px */
+  --t-lead:   1.0625rem;   /* 17px */
+  --t-h3:     1.1875rem;   /* 19px */
+  --t-h2:     clamp(1.375rem, 1.1rem + 1.1vw, 1.875rem);
+  --t-big:    clamp(1.75rem, 1.2rem + 2.4vw, 2.75rem);
+  --t-hero:   clamp(4rem, 2.2rem + 8vw, 8.5rem);
+
+  --r: 10px;
+  --r-sm: 6px;
+  --shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 22px 48px -22px rgba(0,0,0,.9);
+  --max: 1460px;
+
+  /* Springs, critically damped, sampled from x(t) = 1-(1+wt)e^(-wt), w=2pi/response.
+     Each easing ships with the duration that came out of the same maths. */
+  --spring: linear(0.0000 0.0%, 0.0781 3.8%, 0.2342 7.7%, 0.4004 11.5%, 0.5480 15.4%,
+            0.6682 19.2%, 0.7611 23.1%, 0.8306 26.9%, 0.8813 30.8%, 0.9177 34.6%,
+            0.9433 38.5%, 0.9612 42.3%, 0.9737 46.2%, 0.9822 50.0%, 0.9880 53.8%,
+            0.9919 57.7%, 0.9946 61.5%, 0.9964 65.4%, 0.9976 69.2%, 0.9984 73.1%,
+            0.9990 76.9%, 0.9993 80.8%, 0.9995 84.6%, 0.9997 88.5%, 0.9998 92.3%,
+            0.9999 96.2%, 1.0000 100.0%);
+  --spring-fast: 570ms;   /* response 0.30s */
+  --spring-slow: 760ms;   /* response 0.40s */
+  --press: 110ms;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ink: #ECEFF4; --ink-2: #F5F7FA; --surface: #FFFFFF; --surface-2: #F3F6FA;
+    --edge: #CBD4E1; --edge-soft: #E4EAF2;
+    --text: #060A12; --text-2: #3B475E; --text-3: #667389;
+    --beam: #0A6289; --beam-dim: #7FBEDC; --amber: #94590A;
+    --slate: #55607A; --alert: #B02020; --clear: #0E7550;
+    --shadow: 0 1px 2px rgba(10,14,22,.06), 0 14px 30px -18px rgba(10,14,22,.3);
+  }
+}
+
+/* ------------------------------------------------------------------- base */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--face);
+  font-size: var(--t-body);
+  line-height: 1.55;
+  letter-spacing: -0.004em;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The paper. A faint ruled grid, the Print-Tech ground, well under the text. */
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    linear-gradient(var(--edge-soft) 1px, transparent 1px) 0 0 / 100% 88px,
+    linear-gradient(90deg, var(--edge-soft) 1px, transparent 1px) 0 0 / 88px 100%;
+  opacity: .5;
+  mask-image: radial-gradient(ellipse 120% 80% at 50% 0%, #000 20%, transparent 78%);
+}
+
+h1, h2, h3, h4 { font-weight: 650; }
+
+a { color: var(--beam); text-underline-offset: 3px; }
+
+::selection { background: color-mix(in srgb, var(--beam) 32%, transparent); }
+
+/* Every interactive thing answers on pointer-down, not on release. */
+button, .tap, .src { touch-action: manipulation; }
+button:active, tr.tap:active, .src:active { transform: scale(.985); }
+button { transition: transform var(--press) ease-out, color .14s, background .14s,
+                     border-color .14s; }
+
+button:focus-visible, a:focus-visible, tr.tap:focus-visible, input:focus-visible,
+select:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--beam);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* ---------------------------------------------------------------- masthead */
+.mast {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--ink) 78%, transparent);
+  backdrop-filter: saturate(150%) blur(16px);
+  border-bottom: 1px solid var(--edge);
+}
+.mast-in {
+  max-width: var(--max); margin: 0 auto;
+  padding: 0 clamp(16px, 2.4vw, 30px);
+  min-height: 60px;
+  display: flex; align-items: center; gap: 22px;
+}
+.logo {
+  display: flex; align-items: center; gap: 9px;
+  color: var(--text); text-decoration: none;
+  min-height: 44px;                    /* tap target floor */
+}
+.logo svg { width: 21px; height: 21px; color: var(--beam); flex: none; }
+.logo b { font-size: var(--t-lead); font-weight: 700; letter-spacing: -.035em; }
+.logo span {
+  font-family: var(--mono); font-size: var(--t-micro); letter-spacing: .14em;
+  color: var(--text-3); text-transform: uppercase; white-space: nowrap;
+}
+
+.tabs { display: flex; gap: 2px; margin-left: auto; }
+.tabs button {
+  appearance: none; background: none; border: 0; cursor: pointer;
+  color: var(--text-2);
+  font-family: var(--face); font-size: var(--t-small); font-weight: 550;
+  letter-spacing: -.006em;
+  min-height: 44px;                    /* was 28px */
+  padding: 0 14px;
+  border-radius: var(--r-sm);
+  position: relative;
+}
+.tabs button:hover { color: var(--text); background: var(--surface); }
+.tabs button[aria-current="page"] { color: var(--ink); background: var(--beam); }
+
+.status {
+  display: flex; align-items: center; gap: 16px;
+  font-family: var(--mono); font-size: var(--t-micro); color: var(--text-3);
+  white-space: nowrap;
+}
+.status b { color: var(--text-2); font-weight: 500; }
+.beacon {
+  width: 7px; height: 7px; border-radius: 50%; display: inline-block;
+  background: var(--clear); box-shadow: 0 0 0 0 color-mix(in srgb, var(--clear) 60%, transparent);
+  animation: pulse 2.6s ease-out infinite;
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--clear) 55%, transparent); }
+  70%  { box-shadow: 0 0 0 9px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* ------------------------------------------------------------------- shell */
+.shell {
+  position: relative; z-index: 1;
+  max-width: var(--max); margin: 0 auto;
+  padding: 0 clamp(16px, 2.4vw, 30px) 64px;
+}
+
+.note {
+  border: 1px solid var(--edge); border-left: 3px solid var(--beam);
+  background: var(--surface); border-radius: var(--r-sm);
+  padding: 12px 16px; margin: 20px 0; font-size: var(--t-small); color: var(--text-2);
+}
+.note.warn { border-left-color: var(--amber); }
+.note code { font-family: var(--mono); color: var(--text); }
+
+/* -------------------------------------------------------------------- hero */
+.hero {
+  position: relative; overflow: hidden;
+  margin-top: 26px;
+  border: 1px solid var(--edge); border-radius: var(--r);
+  background:
+    radial-gradient(120% 140% at 88% -30%, color-mix(in srgb, var(--beam) 9%, transparent), transparent 62%),
+    var(--ink-2);
+  box-shadow: var(--shadow);
+}
+/* ruler ticks along the top edge — marginalia, not decoration for its own sake */
+.hero::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 9px;
+  background: repeating-linear-gradient(90deg, var(--edge) 0 1px, transparent 1px 24px);
+  opacity: .85;
+}
+.hero-spark { position: absolute; inset: auto 0 0 0; height: 62%; opacity: .5; }
+.hero-in { position: relative; padding: clamp(26px, 3.4vw, 44px); }
+
+.hero-tag {
+  font-family: var(--mono); font-size: var(--t-micro); letter-spacing: .2em;
+  text-transform: uppercase; color: var(--beam); margin: 0 0 18px;
+}
+.hero-val {
+  font-size: var(--t-hero); font-weight: 700; line-height: .86;
+  letter-spacing: -.045em; margin: 0;
+  display: flex; align-items: baseline; gap: clamp(12px, 1.6vw, 22px);
+  font-variant-numeric: tabular-nums;
+}
+.hero-delta {
+  font-size: var(--t-big); font-weight: 600; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+.hero-delta.up   { color: var(--alert); }
+.hero-delta.down { color: var(--clear); }
+.hero-delta.flat { color: var(--text-3); font-size: var(--t-lead); }
+.hero-sub {
+  margin: 20px 0 0; max-width: 62ch;
+  font-size: var(--t-lead); line-height: 1.5; color: var(--text-2);
+}
+.hero-sub b { color: var(--text); font-weight: 600; }
+
+/* the readout strip */
+.gauges {
+  display: grid; gap: 1px; margin-top: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  background: var(--edge); border: 1px solid var(--edge); border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.gauge { background: var(--ink-2); padding: 16px 18px; }
+.gauge .k {
+  display: block; font-family: var(--mono); font-size: var(--t-micro);
+  letter-spacing: .17em; text-transform: uppercase; color: var(--text-3);
+  margin-bottom: 9px;
+}
+.gauge .v {
+  display: block; font-size: var(--t-big); font-weight: 650; line-height: 1;
+  letter-spacing: -.03em; font-variant-numeric: tabular-nums;
+}
+.gauge .v.gA { color: var(--clear); }
+.gauge .v.gB { color: var(--amber); }
+.gauge .v.gC { color: var(--alert); }
+.gauge .n {
+  display: block; margin-top: 7px; font-size: var(--t-small); color: var(--text-3);
+}
+
+/* ---------------------------------------------------------------- sections */
+.sec { margin-top: clamp(38px, 5vw, 62px); }
+.sec-head {
+  display: flex; align-items: flex-start; gap: 18px;
+  padding-bottom: 18px; margin-bottom: 20px;
+  border-bottom: 1px solid var(--edge);
+}
+.sec-num {
+  font-family: var(--mono); font-size: var(--t-micro); letter-spacing: .1em;
+  color: var(--beam); border: 1px solid var(--edge); border-radius: var(--r-sm);
+  padding: 5px 8px; flex: none; margin-top: 3px;
+}
+.sec-head h2 {
+  font-size: var(--t-h2); letter-spacing: -.028em; margin: 0 0 8px;
+  line-height: 1.15;
+}
+.sec-head p {
+  margin: 0; max-width: 78ch; color: var(--text-2); font-size: var(--t-body);
+}
+
+/* segmented control */
+.seg {
+  display: flex; gap: 1px; flex: none; align-self: flex-start;
+  background: var(--edge); border: 1px solid var(--edge);
+  border-radius: var(--r-sm); overflow: hidden;
+}
+.seg button {
+  appearance: none; border: 0; cursor: pointer; background: var(--surface);
+  color: var(--text-3);
+  font-family: var(--mono); font-size: var(--t-micro); letter-spacing: .1em;
+  text-transform: uppercase;
+  min-height: 44px; padding: 0 15px;      /* tap target floor */
+}
+.seg button:hover { color: var(--text-2); }
+.seg button[aria-pressed="true"] { background: var(--beam); color: var(--ink); }
+
+/* ------------------------------------------------------------------- cards */
+.card {
+  border: 1px solid var(--edge); border-radius: var(--r);
+  background: var(--surface); box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.card-h {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+  padding: 16px 18px; border-bottom: 1px solid var(--edge-soft);
+}
+.card-h h3 { margin: 0; font-size: var(--t-h3); letter-spacing: -.018em; }
+.card-h p { margin: 6px 0 0; font-size: var(--t-small); color: var(--text-3); max-width: 70ch; }
+.card-b { padding: 16px 18px; }
+.card-b.flush { padding: 0; }
+
+.duo { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+.trio { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+@media (max-width: 900px) { .trio { grid-template-columns: 1fr; } }
+
+.plot { width: 100%; height: 330px; }
+.plot.tall { height: 400px; }
+
+/* ----------------------------------------------------------------- insight */
+.insight {
+  border: 1px solid var(--edge); border-left: 3px solid var(--beam);
+  border-radius: var(--r); background: var(--ink-2); padding: 22px 24px;
+}
+.insight .k {
+  font-family: var(--mono); font-size: var(--t-micro); letter-spacing: .18em;
+  text-transform: uppercase; color: var(--beam);
+}
+.insight .big {
+  font-size: var(--t-big); font-weight: 700; letter-spacing: -.03em;
+  line-height: 1.14; margin: 12px 0 14px; max-width: 34ch;
+}
+.insight p { margin: 0 0 10px; color: var(--text-2); max-width: 80ch; font-size: var(--t-body); }
+.insight p:last-child { margin-bottom: 0; }
+
+/* ------------------------------------------------------------------ tables */
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+th {
+  text-align: left; font-family: var(--mono); font-size: var(--t-micro);
+  letter-spacing: .13em; text-transform: uppercase; color: var(--text-3);
+  font-weight: 500; padding: 11px 14px; border-bottom: 1px solid var(--edge);
+  white-space: nowrap; position: sticky; top: 0; background: var(--surface);
+}
+td { padding: 11px 14px; border-bottom: 1px solid var(--edge-soft); color: var(--text-2); }
+td strong { color: var(--text); font-weight: 600; }
+tbody tr:last-child td { border-bottom: 0; }
+.num, td.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--text); }
+.mono { font-family: var(--mono); font-size: var(--t-micro); }
+tr.tap { cursor: pointer; transition: background .12s, transform var(--press) ease-out; }
+tr.tap:hover { background: var(--surface-2); }
+.num.up { color: var(--alert); }
+.num.down { color: var(--clear); }
+
+.chip {
+  display: inline-block; font-family: var(--mono); font-size: var(--t-micro);
+  font-weight: 500; letter-spacing: .09em; padding: 3px 8px; border-radius: 4px;
+  border: 1px solid; white-space: nowrap;
+}
+.c-ok { color: var(--clear); border-color: color-mix(in srgb, var(--clear) 42%, transparent);
+        background: color-mix(in srgb, var(--clear) 11%, transparent); }
+.c-wn { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 42%, transparent);
+        background: color-mix(in srgb, var(--amber) 11%, transparent); }
+.c-no { color: var(--alert); border-color: color-mix(in srgb, var(--alert) 42%, transparent);
+        background: color-mix(in srgb, var(--alert) 11%, transparent); }
+
+/* ------------------------------------------------------- compliance rail -- */
+.rail { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+.src {
+  border: 1px solid var(--edge); border-radius: var(--r-sm);
+  background: var(--surface); padding: 14px 16px;
+  transition: transform var(--press) ease-out, border-color .14s;
+}
+.src.on { border-left: 3px solid var(--clear); }
+.src:not(.on) { border-left: 3px solid var(--alert); opacity: .82; }
+.src .nm { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.src .nm b { font-size: var(--t-body); font-weight: 600; }
+.src .det { margin-top: 8px; font-size: var(--t-small); color: var(--text-3); }
+.src .hs { font-family: var(--mono); font-size: var(--t-micro); color: var(--text-3); word-break: break-all; }
+
+/* ------------------------------------------------------------------- prose */
+.prose { font-size: var(--t-body); color: var(--text-2); line-height: 1.62; }
+.prose h4 {
+  margin: 22px 0 8px; font-size: var(--t-h3); color: var(--text); letter-spacing: -.018em;
+}
+.prose p { margin: 0 0 12px; max-width: 74ch; }
+.prose strong { color: var(--text); }
+.prose ul { margin: 0; padding-left: 20px; }
+.prose li { margin-bottom: 9px; max-width: 82ch; }
+pre {
+  margin: 0; padding: 14px 16px; overflow-x: auto;
+  background: var(--ink-2); border: 1px solid var(--edge); border-radius: var(--r-sm);
+  font-family: var(--mono); font-size: var(--t-small); line-height: 1.65; color: var(--text-2);
+}
+pre b { color: var(--beam); font-weight: 500; }
+code { font-family: var(--mono); font-size: .94em; }
+
+.step { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--edge-soft); }
+.step:last-child { border-bottom: 0; }
+.step .lbl {
+  font-family: var(--mono); font-size: var(--t-micro); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--text-3); flex: none; width: 108px; padding-top: 2px;
+}
+.step .val { font-size: var(--t-small); color: var(--text-2); }
+.hashbox {
+  font-family: var(--mono); font-size: var(--t-micro); color: var(--text-3);
+  background: var(--ink-2); border: 1px solid var(--edge); border-radius: 4px;
+  padding: 9px 11px; word-break: break-all; margin-top: 8px;
+}
+
+/* ------------------------------------------------------------------ drawer */
+.scrim {
+  position: fixed; inset: 0; z-index: 50;
+  background: color-mix(in srgb, #000 62%, transparent);
+  backdrop-filter: blur(3px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 240ms ease;
+}
+.scrim.on { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 51;
+  width: min(560px, 94vw);
+  background: var(--ink-2); border-left: 1px solid var(--edge);
+  box-shadow: -30px 0 70px -30px rgba(0,0,0,.9);
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  /* a sheet is a physical thing: spring, not a material curve */
+  transition: transform var(--spring-fast) var(--spring);
+}
+.drawer.on { transform: translateX(0); }
+.drawer-h {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  padding: 20px 22px; border-bottom: 1px solid var(--edge);
+}
+.drawer-h h3 { margin: 0 0 5px; font-size: var(--t-h3); letter-spacing: -.02em; }
+.drawer-h p { margin: 0; font-size: var(--t-small); color: var(--text-3); }
+.drawer-b { padding: 20px 22px; overflow-y: auto; }
+.x {
+  appearance: none; background: none; border: 1px solid var(--edge);
+  border-radius: var(--r-sm); color: var(--text-2);
+  width: 44px; height: 44px; flex: none;      /* tap target floor */
+  font-size: var(--t-lead); cursor: pointer; line-height: 1;
+}
+.x:hover { color: var(--text); background: var(--surface); }
+
+/* -------------------------------------------------------------------- foot */
+.foot {
+  margin: 64px 0 0; padding-top: 22px; border-top: 1px solid var(--edge);
+  font-family: var(--mono); font-size: var(--t-micro); line-height: 1.9;
+  color: var(--text-3); letter-spacing: .04em;
+}
+
+/* ------------------------------------------------------------ narrow view */
+@media (max-width: 780px) {
+  .mast-in { flex-wrap: wrap; gap: 12px; padding-top: 10px; padding-bottom: 10px; }
+  .tabs { order: 3; width: 100%; margin-left: 0; overflow-x: auto; }
+  .tabs button { flex: 0 0 auto; }
+  .status .opt { display: none; }
+  .sec-head { flex-wrap: wrap; }
+  .plot, .plot.tall { height: 300px; }
+}
+
+/* --------------------------------------------- three accessibility signals */
+
+/* 1. Motion. A gentler equivalent, not the absence of feedback: the press
+      state stays, because on touch it is the only feedback there is. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .drawer { transition: opacity 200ms ease; }
+  button:active, tr.tap:active, .src:active { transform: none; }
+  button:active { background: var(--surface-2); }
+  .beacon { animation: none; }
+}
+
+/* 2. Transparency. Raise the opacity and drop the blur rather than keeping a
+      translucent layer that the reader has asked not to see through. */
+@media (prefers-reduced-transparency: reduce) {
+  .mast { background: var(--ink); backdrop-filter: none; }
+  .scrim { backdrop-filter: none; background: color-mix(in srgb, #000 78%, transparent); }
+  body::before { display: none; }
+}
+
+/* 3. Contrast. Near-solid grounds and defined borders. */
+@media (prefers-contrast: more) {
+  :root {
+    --text-2: #DCE4F0; --text-3: #B3BECF;
+    --edge: #4A5A78; --edge-soft: #33405A;
+  }
+  .mast { background: var(--ink); backdrop-filter: none; }
+  .card, .src, .note, .insight { border-width: 2px; }
+  body::before { display: none; }
+}
+
+@media print {
+  .mast, .scrim, .drawer, body::before { display: none !important; }
+  body { background: #fff; color: #000; }
+}
+
+/* ==========================================================================
+   EDITORIAL LAYER
+   Family: Data-as-Texture. Style system: Editorial.
+
+   The page already had the right colours and the right information. What it
+   did not have was hierarchy: five identical gauges, cards of uniform weight,
+   and headlines set at the same size as everything around them, so a reader
+   at three metres had nothing to land on. Editorial fixes that with size and
+   space rather than with more colour.
+   ========================================================================== */
+
+/* --- the readout becomes a composition, not a row of equal boxes ---------
+   Coverage and sources cleared are the two a reviewer checks first, so they
+   take half the row each; the other three sit underneath at a third the
+   weight. */
+.gauges { grid-template-columns: repeat(6, 1fr); }
+.gauge { grid-column: span 2; }
+.gauge.lead { grid-column: span 3; padding: 22px 24px; }
+.gauge.lead .v { font-size: clamp(2.25rem, 1.4rem + 3.4vw, 3.5rem); letter-spacing: -.04em; }
+.gauge.lead .k { color: var(--beam); }
+.gauge.lead .n { font-size: var(--t-body); color: var(--text-2); }
+
+/* --- editorial headline setting -----------------------------------------
+   A headline wants a shorter measure than a paragraph. Capping it near 26
+   characters forces the two-line break that makes it read as a headline
+   rather than as a long label. */
+.sec-head h2 { max-width: 26ch; font-weight: 700; letter-spacing: -.032em; }
+.sec-head > div > p {
+  font-size: var(--t-lead); line-height: 1.55; color: var(--text-2); max-width: 68ch;
+}
+
+/* the standfirst under the index reading */
+.hero-sub {
+  font-size: clamp(1.0625rem, .95rem + .5vw, 1.3125rem);
+  line-height: 1.48; max-width: 54ch; color: var(--text-2);
+}
+
+/* --- panel weight -------------------------------------------------------
+   Uniform cards are what make a dashboard read as generated. A panel holding
+   the argument should not weigh the same as a panel holding a footnote. */
+.sec > .card { background: var(--ink-2); }
+.duo > .card, .trio > .card { background: var(--surface); }
+.card-h h3 { font-size: var(--t-h3); letter-spacing: -.02em; font-weight: 650; }
+
+/* --- rhythm -------------------------------------------------------------- */
+.sec { margin-top: clamp(46px, 6vw, 78px); }
+.sec-head { padding-bottom: 20px; margin-bottom: 24px; }
+
+/* --- data as texture ----------------------------------------------------
+   The sparkline behind the reading is the ornament. It is the same series the
+   chart below plots, drawn faintly, so the decoration is the data. */
+.hero-spark { opacity: .42; }
+
+@media (max-width: 860px) {
+  .gauges { grid-template-columns: 1fr 1fr; }
+  .gauge, .gauge.lead { grid-column: span 2; }
+}
+
+/* ------------------------------------------------------- lineage drawer -- */
+/* The step was a flex row with a fixed-width label and every other element as
+   a sibling, so the value, the description and the fares table all competed
+   for one line and overlapped. It is two columns: the label in the margin,
+   everything else stacked in the content column. */
+.step {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 4px 16px;
+  align-items: start;
+  padding: 16px 0;
+}
+.step .lbl {
+  grid-column: 1; grid-row: 1 / span 99;
+  width: auto; line-height: 1.6;
+  /* Table names are single long tokens. Uppercasing them with wide tracking
+     made them too wide for any sane column, so they broke mid-word. Lower case
+     and tighter tracking lets them wrap at the separator instead. */
+  text-transform: none;
+  letter-spacing: .04em;
+  overflow-wrap: normal;
+}
+.step .val, .step .det, .step .scroll, .step .hashbox { grid-column: 2; }
+.step .val {
+  font-size: var(--t-lead); font-weight: 600; line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.step .det { color: var(--text-3); line-height: 1.55; }
+
+/* the fares table inside the drawer */
+.step .scroll { margin-top: 12px; border: 1px solid var(--edge); border-radius: var(--r-sm); }
+.step .scroll table { min-width: 340px; }
+.step .scroll th, .step .scroll td { padding: 7px 10px; white-space: nowrap; }
+.step .scroll th { font-size: 10px; letter-spacing: .1em; }
+
+@media (max-width: 560px) {
+  .step { grid-template-columns: minmax(0, 1fr); }
+  .step .lbl { grid-column: 1; grid-row: auto; margin-bottom: 2px; }
+  .step .val, .step .det, .step .scroll, .step .hashbox { grid-column: 1; }
+}

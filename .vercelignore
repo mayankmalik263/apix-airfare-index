@@ -1,0 +1,14 @@
+# Built fresh on Vercel by scripts/vercel_build.py. Never upload the local
+# database: it holds real operator accounts and API key hashes.
+apix.db
+apix.db-wal
+apix.db-shm
+apix.dryrun.db
+.apix_secret
+data/bronze
+.venv
+venv
+__pycache__
+.pytest_cache
+TEAM
+tests

@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Databases (built locally from the seed; never commit a binary DB)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+
+# Node / dashboard
+node_modules/
+dashboard/dist/
+dashboard/.vite/
+
+# Bronze raw archive: large, machine-generated, regenerable from the seed.
+# The ARCHIVE ITSELF is precious in production; in the repo it is noise.
+data/bronze/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Filled ground-truth sheets are data, not code -- but the blank templates and
+# the combined file ARE tracked, so there is always something to open.
+
+# Session signing secret: generated on first run, never committed.
+.apix_secret
+
+# Scratch database used by scripts/dry_run.py
+apix.dryrun.db
+
+# The compressed live archive IS tracked: it is the only copy of three days of
+# real collection that cannot be gathered again, and 13 MB is a fair price.
+!data/seed/
