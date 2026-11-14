@@ -16,6 +16,7 @@
   <img src="https://img.shields.io/badge/ECharts-vendored-AA344D?style=flat-square&logo=apacheecharts&logoColor=white" alt="ECharts">
   <img src="https://img.shields.io/badge/Playwright-collector-2EAD33?style=flat-square&logo=playwright&logoColor=white" alt="Playwright">
   <img src="https://img.shields.io/badge/Deploys%20on-Vercel-000000?style=flat-square&logo=vercel&logoColor=white" alt="Vercel">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License"></a>
 </p>
 
 <p align="center">
@@ -307,6 +308,13 @@ Stated up front:
    0 priced fares. Those days are published as empty with coverage 0, not filled in.
 
 More in [METHODOLOGY.md](METHODOLOGY.md) and [GUIDE.md](GUIDE.md).
+
+---
+
+## 📄 License
+
+[MIT](LICENSE). The vendored ECharts (Apache-2.0) and fonts (SIL OFL) keep
+their own licenses.
 
 ---
 
